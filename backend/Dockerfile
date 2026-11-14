@@ -1,6 +1,8 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
+
+RUN npm install --global npm@11.21.2
 
 COPY package*.json ./
 RUN npm install --omit=dev
