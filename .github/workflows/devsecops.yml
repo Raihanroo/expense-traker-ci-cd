@@ -59,7 +59,7 @@ jobs:
       - name: Build frontend image
         run: docker build -t expense-frontend:ci ./frontend
       - name: Trivy backend image - CRITICAL only
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: expense-backend:ci
           scanners: vuln
@@ -67,7 +67,7 @@ jobs:
           exit-code: '1'
           format: table
       - name: Trivy frontend image - CRITICAL only
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: expense-frontend:ci
           scanners: vuln
@@ -96,7 +96,8 @@ jobs:
     needs: image-build-scan-push
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
     concurrency:
       group: expense-tracker-production
       cancel-in-progress: false
@@ -104,10 +105,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Configure SSH with verified server fingerprint
         env:
-          EC2_HOST: ${{ vars.EC2_HOST }}
-          EC2_USER: ${{ vars.EC2_USER }}
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-          EC2_HOST_FINGERPRINT: ${{ vars.EC2_HOST_FINGERPRINT }}
+          EC2_HOST: ${{ vars['EC2_HOST'] }}
+          EC2_USER: ${{ vars['EC2_USER'] }}
+          EC2_SSH_KEY: ${{ secrets['EC2_SSH_KEY'] }}
+          EC2_HOST_FINGERPRINT: ${{ vars['EC2_HOST_FINGERPRINT'] }}
         run: |
           set -euo pipefail
           test -n "$EC2_HOST" && test -n "$EC2_USER" && test -n "$EC2_SSH_KEY" && test -n "$EC2_HOST_FINGERPRINT"
@@ -122,18 +123,18 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
       - name: Upload production Compose file
         env:
-          EC2_HOST: ${{ vars.EC2_HOST }}
-          EC2_USER: ${{ vars.EC2_USER }}
+          EC2_HOST: ${{ vars['EC2_HOST'] }}
+          EC2_USER: ${{ vars['EC2_USER'] }}
         run: |
           ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=yes "$EC2_USER@$EC2_HOST" 'mkdir -p ~/expense-tracker'
           scp -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=yes docker-compose.prod.yml "$EC2_USER@$EC2_HOST:expense-tracker/docker-compose.prod.yml"
       - name: Deploy images and verify health
         env:
-          EC2_HOST: ${{ vars.EC2_HOST }}
-          EC2_USER: ${{ vars.EC2_USER }}
-          HUB_USER: ${{ vars.DOCKERHUB_USERNAME }}
+          EC2_HOST: ${{ vars['EC2_HOST'] }}
+          EC2_USER: ${{ vars['EC2_USER'] }}
+          HUB_USER: ${{ vars['DOCKERHUB_USERNAME'] }}
           IMAGE_TAG: ${{ github.sha }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_TOKEN: ${{ secrets['DOCKERHUB_TOKEN'] }}
         run: |
           set -euo pipefail
           # Token travels over the authenticated, encrypted SSH channel via stdin.
